@@ -10,7 +10,7 @@ const { getClientIP, getClientMAC } = require('../middleware/deviceCheck');
 // ─────────────────────────────────────────────────────────────────
 async function registerStudent(req, res) {
   try {
-    const { full_name, student_number, email, phone, fingerprint } = req.body;
+    const { full_name, student_number, email, phone, address, fingerprint } = req.body;
 
     // Password is no longer required for students — Clock-In ID IS their credential
     if (!full_name || !student_number || !email) {
@@ -26,6 +26,26 @@ async function registerStudent(req, res) {
 
     if (existing && existing.length > 0) {
       return res.status(409).json({ error: 'A student with this email or student number already exists' });
+    }
+
+    if (fingerprint) {
+      const { data: registeredDevice, error: deviceError } = await supabase
+        .from('students')
+        .select('id, full_name')
+        .eq('device_fingerprint', fingerprint)
+        .limit(1)
+        .maybeSingle();
+
+      if (deviceError) {
+        console.error('Device registration check error:', deviceError);
+        return res.status(500).json({ error: 'Could not verify this device. Please try again.' });
+      }
+      if (registeredDevice) {
+        return res.status(409).json({
+          error: 'This device is already registered to a student. One device can only have one student account.',
+          code: 'DEVICE_ALREADY_REGISTERED'
+        });
+      }
     }
 
     const clock_in_id  = generateClockInId();
@@ -44,13 +64,14 @@ async function registerStudent(req, res) {
         student_number,
         email:              email.toLowerCase().trim(),
         phone:              phone || null,
+        device_address:     address || null,
         password_hash,          // placeholder — never used for login
         clock_in_id,
         registered_ip:      clientIP,
         registered_mac:     clientMAC,
         device_fingerprint: fingerprint || null
       })
-      .select('id, full_name, email, student_number, clock_in_id, created_at')
+      .select('id, full_name, email, student_number, clock_in_id, device_address, created_at')
       .single();
 
     if (error) {
@@ -68,6 +89,7 @@ async function registerStudent(req, res) {
         email:          student.email,
         student_number: student.student_number,
         clock_in_id:    student.clock_in_id,
+        device_address: student.device_address,
         created_at:     student.created_at,
         role:           'student'
       },

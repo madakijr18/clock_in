@@ -232,6 +232,10 @@
           <label class="field-label" for="phone">Phone <span style="opacity:.5;font-weight:400;text-transform:none;">(optional)</span></label>
           <input type="tel" id="phone" class="field-input" placeholder="+27 11 000 0000" autocomplete="tel" />
         </div>
+        <div class="field-group">
+          <label class="field-label" for="address">Address <span style="opacity:.5;font-weight:400;text-transform:none;">(optional)</span></label>
+          <input type="text" id="address" class="field-input" placeholder="Home or registered address" autocomplete="street-address" />
+        </div>
 
         <button type="submit" class="btn-reg" id="register-btn">
           <span>Register &amp; Get My Clock-In ID</span> <span>→</span>
@@ -334,6 +338,7 @@
     const student_number = document.getElementById('student-number').value.trim();
     const email          = document.getElementById('reg-email').value.trim();
     const phone          = document.getElementById('phone').value.trim();
+    const address        = document.getElementById('address').value.trim();
 
     if (!full_name || !student_number || !email) {
       showRegAlert('Please fill in all required fields.', 'error'); return;
@@ -351,7 +356,7 @@
       if (!deviceFingerprint) deviceFingerprint = await getFingerprint();
 
       const data = await api.post('/auth/register', {
-        full_name, student_number, email, phone,
+        full_name, student_number, email, phone, address,
         fingerprint: deviceFingerprint
       });
 

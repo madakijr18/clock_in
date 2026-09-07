@@ -202,6 +202,7 @@
                 </div>
                 <span class="badge badge-success" style="font-size:.68rem;">✅ Verified</span>
               </div>
+              <div class="location-status" id="clock-location-status">📍 Location will be requested when you clock in</div>
 
               <div class="clock-btns-row">
                 <div style="text-align:center;">
@@ -304,6 +305,7 @@
 <div id="toast-container"></div>
 <script src="js/api.js"></script>
 <script src="js/fingerprint.js"></script>
+<script src="js/location.js"></script>
 <script>
   const user  = JSON.parse(localStorage.getItem('tm_user') || 'null');
   const token = localStorage.getItem('tm_token');
@@ -434,7 +436,15 @@
     btn.innerHTML = '<span class="btn-icon-large">⏳</span><span>Clocking…</span>'; btn.disabled = true;
     try {
       const fingerprint = await getFingerprint();
-      const data = await api.post('/attendance/clock-in', { clock_in_id: clockId, fingerprint });
+      const location = await getLiveLocation();
+      setLocationStatus('clock-location-status', location);
+      const data = await api.post('/attendance/clock-in', {
+        clock_in_id: clockId,
+        fingerprint,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        accuracy: location?.accuracy
+      });
       showToast(data.message, 'success');
       todayRecord = data.attendance; renderTodayRecord();
     } catch(err) {
@@ -557,7 +567,16 @@
       if(!payload.token) throw new Error('Invalid QR code format');
       clearAlert('qr-alert'); showAlert('qr-alert','⏳ Verifying QR code…','info');
       const fingerprint = await getFingerprint();
-      const data = await api.post('/attendance/clock-in', { clock_in_id: user.clock_in_id, qr_token: payload.token, fingerprint });
+      const location = await getLiveLocation();
+      setLocationStatus('clock-location-status', location);
+      const data = await api.post('/attendance/clock-in', {
+        clock_in_id: user.clock_in_id,
+        qr_token: payload.token,
+        fingerprint,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        accuracy: location?.accuracy
+      });
       showToast(data.message,'success'); clearAlert('qr-alert');
       await loadTodayRecord();
     } catch(err) { showAlert('qr-alert', err.message||'Invalid or expired QR code.','error'); }

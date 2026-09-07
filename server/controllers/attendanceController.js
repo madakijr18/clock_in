@@ -7,7 +7,7 @@ const { getClientIP, getClientMAC } = require('../middleware/deviceCheck');
 async function clockIn(req, res) {
   try {
     const studentId = req.user.id;
-    const { clock_in_id, qr_token, fingerprint } = req.body;
+    const { clock_in_id, qr_token, fingerprint, latitude, longitude, accuracy } = req.body;
     const clientIP = req.clientIP;
     const clientMAC = req.clientMAC;
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -94,6 +94,9 @@ async function clockIn(req, res) {
         ip_address: clientIP,
         mac_address: clientMAC,
         device_fingerprint: fingerprint || null,
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+        location_accuracy: Number.isFinite(accuracy) ? accuracy : null,
         date: today,
         qr_used: !!qr_token,
         status
@@ -223,7 +226,7 @@ async function getTodayAttendance(req, res) {
     const { data, error } = await supabase
       .from('attendance')
       .select(`
-        id, date, clock_in_time, clock_out_time, status, qr_used, ip_address, mac_address, device_fingerprint,
+        id, date, clock_in_time, clock_out_time, status, qr_used, ip_address, mac_address, device_fingerprint, latitude, longitude, location_accuracy,
         students (id, full_name, student_number, clock_in_id),
         locations (name)
       `)
@@ -252,7 +255,7 @@ async function getAllAttendance(req, res) {
     let query = supabase
       .from('attendance')
       .select(`
-        id, date, clock_in_time, clock_out_time, status, qr_used, ip_address, mac_address, device_fingerprint,
+        id, date, clock_in_time, clock_out_time, status, qr_used, ip_address, mac_address, device_fingerprint, latitude, longitude, location_accuracy,
         students (id, full_name, student_number, clock_in_id),
         locations (name)
       `, { count: 'exact' })
@@ -420,7 +423,7 @@ async function getStats(req, res) {
 // ─────────────────────────────────────────────────────────────────
 async function clockPunch(req, res) {
   try {
-    const { clock_in_id, fingerprint, qr_token } = req.body;
+    const { clock_in_id, fingerprint, qr_token, latitude, longitude, accuracy } = req.body;
     const clientIP = getClientIP(req);
     const clientMAC = getClientMAC(req);
 
@@ -448,7 +451,7 @@ async function clockPunch(req, res) {
       await supabase.from('students')
         .update({ registered_ip: clientIP, registered_mac: clientMAC, device_fingerprint: fingerprint || null })
         .eq('id', student.id);
-    } else if (process.env.NODE_ENV === 'production') {
+    } else {
       const ipMatch = student.registered_ip === clientIP;
       const macMatch = student.registered_mac && clientMAC
         ? student.registered_mac === clientMAC
@@ -458,8 +461,8 @@ async function clockPunch(req, res) {
       const deviceMatch = student.registered_mac ? macMatch : ipMatch || fpMatch;
       if (!deviceMatch) {
         return res.status(403).json({
-          error: 'This Clock-In ID is registered to a different device.',
-          code: 'DEVICE_MISMATCH'
+          error: 'This device is already registered to another student. Log in from the registered device.',
+          code: 'DEVICE_ALREADY_REGISTERED'
         });
       }
     }
@@ -507,6 +510,9 @@ async function clockPunch(req, res) {
           clock_in_time: now.toISOString(), ip_address: clientIP,
           mac_address: clientMAC,
           device_fingerprint: fingerprint || null,
+          latitude: Number.isFinite(latitude) ? latitude : null,
+          longitude: Number.isFinite(longitude) ? longitude : null,
+          location_accuracy: Number.isFinite(accuracy) ? accuracy : null,
           date: today, qr_used: !!qr_token, status
         })
         .select('*, locations(name)').single();

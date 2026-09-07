@@ -41,6 +41,7 @@ function _buildHeaders(extra = {}) {
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
 async function _request(method, path, body = null) {
   const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const hadToken = Boolean(_getToken());
   const options = {
     method,
     headers: _buildHeaders(),
@@ -56,8 +57,9 @@ async function _request(method, path, body = null) {
     throw new Error('Network error — check your connection and try again.');
   }
 
-  // Handle 401 globally: token expired or invalid
-  if (response.status === 401) {
+  // Only an authenticated request with a 401 indicates an expired session.
+  // Login failures should preserve the server's useful error message.
+  if (response.status === 401 && hadToken) {
     localStorage.removeItem('tm_token');
     localStorage.removeItem('tm_user');
     showToast('Session expired. Please log in again.', 'error');

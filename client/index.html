@@ -137,16 +137,16 @@
       letter-spacing: .02em;
     }
     .punch-btn.idle {
-      background: linear-gradient(135deg, #10b981, #06b6d4);
-      color: white; box-shadow: 0 6px 24px rgba(16,185,129,.4);
+      background: linear-gradient(135deg, #0f766e, #f59e0b);
+      color: white; box-shadow: 0 6px 24px rgba(15,118,110,.4);
     }
-    .punch-btn.idle:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(16,185,129,.55); }
+    .punch-btn.idle:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(245,158,11,.45); }
     .punch-btn.loading {
       background: rgba(255,255,255,.08); color: rgba(255,255,255,.5);
       cursor: not-allowed;
     }
-    .punch-btn.success-in  { background: linear-gradient(135deg,#10b981,#059669); color:white; box-shadow:0 6px 24px rgba(16,185,129,.5); }
-    .punch-btn.success-out { background: linear-gradient(135deg,#ef4444,#ec4899); color:white; box-shadow:0 6px 24px rgba(239,68,68,.4); }
+    .punch-btn.success-in  { background: linear-gradient(135deg,#0f766e,#14b8a6); color:white; box-shadow:0 6px 24px rgba(20,184,166,.5); }
+    .punch-btn.success-out { background: linear-gradient(135deg,#dc2626,#e11d48); color:white; box-shadow:0 6px 24px rgba(225,29,72,.4); }
     .punch-btn.done        { background: rgba(255,255,255,.06); color:rgba(255,255,255,.4); cursor:not-allowed; }
     .punch-btn.error-state { background: rgba(239,68,68,.2); border:1px solid rgba(239,68,68,.4); color:#fca5a5; cursor:not-allowed; }
     .spin { width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
@@ -254,6 +254,7 @@
         <span class="device-dot"></span>
         <span id="device-label">Detecting device…</span>
       </div>
+      <div class="location-status" id="punch-location-status">📍 Live location is requested at clock-in</div>
 
       <form id="punch-form" novalidate autocomplete="off">
         <div class="id-field">
@@ -303,6 +304,7 @@
 
 <script src="js/api.js"></script>
 <script src="js/fingerprint.js"></script>
+<script src="js/location.js"></script>
 <script>
   // ── Stars ──────────────────────────────────────────────
   (function(){
@@ -413,10 +415,15 @@
     document.getElementById('result-panel').className='result-panel';
 
     try {
+      const location = await getLiveLocation();
+      setLocationStatus('punch-location-status', location);
       const data = await api.post('/attendance/punch', {
         clock_in_id: clockId,
         fingerprint: fp,
-        qr_token: qrToken
+        qr_token: qrToken,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
+        accuracy: location?.accuracy
       });
 
       // Store auth from punch response

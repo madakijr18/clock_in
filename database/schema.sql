@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS students (
   registered_ip       VARCHAR(100),
   registered_mac      VARCHAR(17),
   device_fingerprint  TEXT,
+  device_address     TEXT,
   is_active           BOOLEAN DEFAULT true,
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
@@ -77,6 +78,9 @@ CREATE TABLE IF NOT EXISTS attendance (
   ip_address          VARCHAR(100),
   mac_address         VARCHAR(17),
   device_fingerprint  TEXT,
+  latitude            DECIMAL(10, 7),
+  longitude           DECIMAL(10, 7),
+  location_accuracy   DECIMAL(10, 2),
   date                DATE NOT NULL,
   qr_used             BOOLEAN DEFAULT false,
   status              VARCHAR(20) DEFAULT 'present' CHECK (status IN ('present', 'late', 'absent')),
@@ -85,7 +89,11 @@ CREATE TABLE IF NOT EXISTS attendance (
 
 -- Safe upgrades for databases created from an older schema.
 ALTER TABLE students ADD COLUMN IF NOT EXISTS registered_mac VARCHAR(17);
+ALTER TABLE students ADD COLUMN IF NOT EXISTS device_address TEXT;
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS mac_address VARCHAR(17);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 7);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 7);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS location_accuracy DECIMAL(10, 2);
 
 -- ───────────────────────────────────────────────────────────────
 -- TABLE: working_days (admin configures which days are work days)
@@ -117,6 +125,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_one_clock_in_per_day
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_qr_codes_valid_date ON qr_codes(valid_date);
 CREATE INDEX IF NOT EXISTS idx_students_clock_in_id ON students(clock_in_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_students_device_fingerprint
+  ON students(device_fingerprint)
+  WHERE device_fingerprint IS NOT NULL AND device_fingerprint <> '';
 
 -- ───────────────────────────────────────────────────────────────
 -- FUNCTION: auto-update updated_at on locations

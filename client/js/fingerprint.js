@@ -165,6 +165,9 @@ function _detectFonts() {
  * @returns {Promise<string>} hex fingerprint string
  */
 async function getFingerprint() {
+  const cached = sessionStorage.getItem('tm_device_fingerprint');
+  if (cached) return cached;
+
   const [canvas, webgl, audio, fonts] = await Promise.all([
     Promise.resolve(_canvasFingerprint()),
     Promise.resolve(_webglFingerprint()),
@@ -198,5 +201,7 @@ async function getFingerprint() {
     navigator.userAgent.substring(0, 120),
   ].join('|');
 
-  return _sha256(components);
+  const fingerprint = await _sha256(components);
+  sessionStorage.setItem('tm_device_fingerprint', fingerprint);
+  return fingerprint;
 }
