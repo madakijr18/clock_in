@@ -507,7 +507,9 @@ async function clockPunch(req, res) {
         .from('attendance')
         .insert({
           student_id: student.id, location_id: locationId,
-          clock_in_time: now.toISOString(), ip_address: clientIP,
+          clock_in_time:  now.toISOString(),
+          clock_out_time: now.toISOString(), // auto clock-out at same time as clock-in
+          ip_address: clientIP,
           mac_address: clientMAC,
           device_fingerprint: fingerprint || null,
           latitude: Number.isFinite(latitude) ? latitude : null,
@@ -524,14 +526,14 @@ async function clockPunch(req, res) {
 
       return res.status(201).json({
         action: 'clocked_in',
-        message: `✅ Clocked in successfully! Status: ${status}`,
+        message: `Attendance recorded for ${student.full_name}. Status: ${status}`,
         student: { id: student.id, full_name: student.full_name, clock_in_id: student.clock_in_id, role: 'student' },
         attendance: record,
         token
       });
 
     } else if (!existing.clock_out_time) {
-      // ── CLOCK OUT ──
+      // ── CLOCK OUT (manual, legacy path) ──
       const now      = new Date().toISOString();
       const { data: updated, error: updateErr } = await supabase
         .from('attendance')
@@ -550,7 +552,7 @@ async function clockPunch(req, res) {
 
       return res.json({
         action: 'clocked_out',
-        message: `🚪 Clocked out! You worked ${hrs}h ${mins}m today.`,
+        message: `Clocked out! You worked ${hrs}h ${mins}m today.`,
         student: { id: student.id, full_name: student.full_name, clock_in_id: student.clock_in_id, role: 'student' },
         attendance: updated,
         token
